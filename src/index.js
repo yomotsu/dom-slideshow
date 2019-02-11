@@ -1,5 +1,3 @@
-const DURATION = 5000;
-
 const $style = document.createElement( 'style' );
 $style.innerHTML = `
 .DOMSlideshow {
@@ -35,15 +33,20 @@ $style.innerHTML = `
 document.head.appendChild( $style );
 
 const defaultOption = {
-	loop: false,
+	duration: 5000,
+	noLoop: false,
 }
 
 export default class DOMSlideshow {
 	
-	constructor( $el, { loop } = defaultOption ) {
+	constructor( $el, { duration, noLoop } = defaultOption ) {
 
+		if ( $el.getAttribute( 'data-dom-slideshow-active' ) === 'true' ) return;
+
+		$el.setAttribute( 'data-dom-slideshow-active', 'true' );
 		this._current = 0;
-		this.loop = loop;
+		this.duration = duration;
+		this.noLoop = !! noLoop;
 		this.$items = $el.querySelectorAll( '.DOMSlideshow__Item' );
 
 		const transition = () => {
@@ -64,43 +67,38 @@ export default class DOMSlideshow {
 			const $prev    = this.$items[ this.prevIndex ];
 			// const $next    = this.$items[ this.nextIndex ];
 
-			const fx = $current.getAttribute( 'data-slideshow-transition' );
-
 			$current.style.transform = 'none';
 			$current.style.opacity = 0;
-			$current.style.zIndex = 3;
+			$current.style.zIndex = 1;
 
 			requestAnimationFrame( () => {
 
-				$current.style.transition = `transform ${ DURATION }ms linear, opacity ${ DURATION * 0.2 }ms`;
+				$current.style.transition = `transform ${ this.duration }ms linear, opacity ${ this.duration * 0.2 }ms`;
 				$current.style.transform =
-					fx === 'zoomin'  ? 'scale( ' + scaleMin + ', ' + scaleMin + ' )' :
-					fx === 'zoomout' ? 'scale( ' + scaleMax + ', ' + scaleMax + ' )' :
-					fx === 'ltor' ? 'translateX( 70px )' :
-					fx === 'rtol' ? 'translateX( -70px )' :
+					$current.classList.contains( '-zoomin'  ) ? `scale( ${ scaleMin }, ${ scaleMin } )` :
+					$current.classList.contains( '-zoomout' ) ? `scale( ${ scaleMax }, ${ scaleMax } )` :
+					$current.classList.contains( '-ltor'    ) ? `translateX( 70px )` :
+					$current.classList.contains( '-rtol'    ) ? `translateX( -70px )` :
 					'none';
 				$current.style.opacity = 1;
-				$current.style.zIndex = 1;
 
 			} );
 
 			setTimeout( () => {
 
-				if ( ! this.loop && this.isLast ) return;
+				if ( this.noLoop && this.isLast ) return;
 
 				$current.style.transition = 'none';
-				$current.style.opacity = 1;
 				$current.style.zIndex = 0;
 
 				$prev.style.transition = 'none';
 				$prev.style.transform = 'none';
 				$prev.style.opacity = 0;
-				$prev.style.zIndex = 0;
 
 				this.toNext();
 				transition();
 
-			}, DURATION );
+			}, this.duration );
 
 		}
 
@@ -150,7 +148,7 @@ Array.prototype.forEach.call(
 	document.querySelectorAll( '.DOMSlideshow' ),
 	( $el ) => {
 
-		new DOMSlideshow( $el, { loop: true } );
+		new DOMSlideshow( $el );
 
 	}
 );
