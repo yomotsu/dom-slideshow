@@ -33,12 +33,19 @@ $style.innerHTML = `
 	position: absolute;
 	top: 0;
 	left: 0;
-	width: calc( 100% + 200px );
-	height: calc( 100% + 200px );
-	margin: -100px;
+	width: 100%;
+	height: 100%;
 	background-position: 50% 50%;
 	background-size: cover;
 	backface-visibility: hidden;
+}
+.-zoomin  .DOMSlideshow__ItemEffect,
+.-zoomout .DOMSlideshow__ItemEffect,
+.-ltor    .DOMSlideshow__ItemEffect,
+.-rtol    .DOMSlideshow__ItemEffect {
+	width: calc( 100% + 200px );
+	height: calc( 100% + 200px );
+	margin: -100px;
 }
 `;
 document.head.appendChild( $style );
@@ -57,10 +64,12 @@ export default class DOMSlideshow {
 		$el.setAttribute( 'data-dom-slideshow-active', 'true' );
 
 		this._current = 0;
+		this._running = true;
 		this._$el = $el;
 		this._$items = this._$el.querySelectorAll( '.DOMSlideshow__Item' );
 		this._$effects = this._$el.querySelectorAll( '.DOMSlideshow__ItemEffect' );
 		this._timeoutId = null;
+		this._listeners = {};
 
 		this.duration = duration;
 		this.noLoop = !! noLoop;
@@ -119,6 +128,20 @@ export default class DOMSlideshow {
 
 	}
 
+	play() {
+
+		if ( ! this._running ) this._transition();
+		this._running = true;
+
+	}
+
+	pause() {
+
+		this._running = false;
+		clearTimeout( this._timeoutId );
+
+	}
+
 	_transition() {
 
 		clearTimeout( this._timeoutId );
@@ -137,6 +160,8 @@ export default class DOMSlideshow {
 
 		const $current = this._$items[ this.current ];
 		const $currentEffects = this._$effects[ this.current ];
+
+		this.dispatchEvent( { type: 'transitionStart' } );
 
 		$current.style.transition = 'none';
 		$current.style.transform = 'none';
@@ -161,13 +186,80 @@ export default class DOMSlideshow {
 
 			this._timeoutId = setTimeout( () => {
 
-				if ( this.noLoop && this.isLast ) return;
+				if ( ! this._running ) return;
+
+				this.dispatchEvent( { type: 'transitionEnd' } );
+
+				if ( this.noLoop && this.isLast ) {
+
+					this.dispatchEvent( { type: 'ended' } );
+					return;
+
+				}
 
 				this.toNext();
 
 			}, this.duration );
 
 		} );
+
+	}
+
+	addEventListener( type, listener ) {
+
+		const listeners = this._listeners;
+
+		if ( listeners[ type ] === undefined ) {
+
+			listeners[ type ] = [];
+
+		}
+
+		if ( listeners[ type ].indexOf( listener ) === - 1 ) {
+
+			listeners[ type ].push( listener );
+
+		}
+
+	}
+
+	removeEventListener( type, listener ) {
+
+		const listeners = this._listeners;
+		const listenerArray = listeners[ type ];
+
+		if ( listenerArray !== undefined ) {
+
+			const index = listenerArray.indexOf( listener );
+
+			if ( index !== - 1 ) {
+
+				listenerArray.splice( index, 1 );
+
+			}
+
+		}
+
+	}
+
+	dispatchEvent( event ) {
+
+		const listeners = this._listeners;
+		const listenerArray = listeners[ event.type ];
+
+		if ( listenerArray !== undefined ) {
+
+			event.target = this;
+
+			const array = listenerArray.slice( 0 );
+
+			for ( let i = 0, l = array.length; i < l; i ++ ) {
+
+				array[ i ].call( this, event );
+
+			}
+
+		}
 
 	}
 
