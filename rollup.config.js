@@ -1,15 +1,15 @@
-import babel from 'rollup-plugin-babel'
+import typescript from 'rollup-plugin-typescript2';
 import pkg from './package.json';
 
 const license = `/*!
- * @author yomotsu
- * DOMSlideshow
+ * dom-slideshow
  * https://github.com/yomotsu/dom-slideshow
+ * (c) 2019 @yomotsu
  * Released under the MIT License.
- */`
+ */`;
 
 export default {
-	input: 'src/index.js',
+	input: 'src/index.ts',
 	output: [
 		{
 			format: 'umd',
@@ -26,6 +26,6 @@ export default {
 		}
 	],
 	plugins: [
-		babel( { exclude: 'node_modules/**' } )
-	]
+		typescript( { typescript: require( 'typescript' ) } ),
+	],
 };

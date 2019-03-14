@@ -1,3 +1,15 @@
+export interface DOMSlideshowOptions {
+	duration?: number,
+	noLoop?: boolean,
+}
+
+interface DispatcherEvent {
+	type: string;
+	[ key: string ]: any;
+}
+
+type Listener = ( event?: DispatcherEvent ) => void;
+
 const $style = document.createElement( 'style' );
 $style.innerHTML = `
 .DOMSlideshow {
@@ -50,99 +62,101 @@ $style.innerHTML = `
 `;
 document.head.appendChild( $style );
 
-const defaultOption = {
-	duration: 5000,
-	noLoop: false,
-};
-
 export default class DOMSlideshow {
 
-	constructor( $el, { duration, noLoop } = defaultOption ) {
+	private _currentIndex: number = 0; 
+	private _running: boolean = true;
+	private _timeoutId: number = 0;
+	private _listeners: { [ type: string ]: Listener[] } = {};
+
+	private _$el!: HTMLElement;
+	private _$items!: NodeListOf<HTMLElement>;
+	private _$effects!: NodeListOf<HTMLElement>;
+
+	public duration!: number;
+	public noLoop!: boolean;
+
+	constructor( $el: HTMLElement, options: DOMSlideshowOptions = {} ) {
 
 		if ( $el.getAttribute( 'data-dom-slideshow-active' ) === 'true' ) return;
 
 		$el.setAttribute( 'data-dom-slideshow-active', 'true' );
 
-		this._current = 0;
-		this._running = true;
 		this._$el = $el;
 		this._$items = this._$el.querySelectorAll( '.DOMSlideshow__Item' );
 		this._$effects = this._$el.querySelectorAll( '.DOMSlideshow__ItemEffect' );
-		this._timeoutId = null;
-		this._listeners = {};
-
-		this.duration = duration;
-		this.noLoop = !! noLoop;
+		this.duration = options.duration || 5000;
+		this.noLoop = !! options.noLoop;
 
 		this._transition();
 
 	}
 
-	get current() {
+	get currentIndex(): number {
 
-		return this._current;
+		return this._currentIndex;
 
 	}
 
-	get itemLength() {
+	get itemLength(): number {
 
 		return this._$items.length;
 
 	}
 
-	get prevIndex() {
+	get prevIndex(): number {
 
-		return this.current !== 0 ? this.current - 1 : this.itemLength - 1;
-
-	}
-
-	get nextIndex() {
-
-		return this.itemLength - 1 > this.current ? this.current + 1 : 0;
+		return this._currentIndex !== 0 ? this._currentIndex - 1 : this.itemLength - 1;
 
 	}
 
-	get isLast() {
+	get nextIndex(): number {
 
-		return this.current === this.itemLength - 1;
+		return this.itemLength - 1 > this._currentIndex ? this._currentIndex + 1 : 0;
 
 	}
 
-	toNext() {
+	get isLast(): boolean {
 
-		const $current = this._$items[ this.current ];
+		return this._currentIndex === this.itemLength - 1;
+
+	}
+
+	public toNext(): void {
+
+		const $current = this._$items[ this._currentIndex ];
 		const $prev = this._$items[ this.prevIndex ];
 		const $prevEffects = this._$effects[ this.prevIndex ];
 
-		$current.style.zIndex = 0;
+		$current.style.zIndex = '0';
 
 		$prev.style.transition = 'none';
 		$prev.style.transform = 'none';
-		$prev.style.opacity = 0;
+		$prev.style.opacity = '0';
 
 		$prevEffects.style.transition = 'none';
 		$prevEffects.style.transform = 'none';
 
-		this._current = this.nextIndex;
+		this._currentIndex = this.nextIndex;
 		this._transition();
 
 	}
 
-	play() {
+	public play(): void {
 
 		if ( ! this._running ) this._transition();
 		this._running = true;
 
 	}
 
-	pause() {
+	public pause(): void {
 
 		this._running = false;
 		clearTimeout( this._timeoutId );
 
 	}
 
-	_transition() {
+	private _transition(): void {
 
 		clearTimeout( this._timeoutId );
 
@@ -158,23 +172,23 @@ export default class DOMSlideshow {
 			1 + ( viewWidth  / ( viewWidth  + 200 ) - 1 )
 		);
 
-		const $current = this._$items[ this.current ];
-		const $currentEffects = this._$effects[ this.current ];
+		const $current = this._$items[ this._currentIndex ];
+		const $currentEffects = this._$effects[ this._currentIndex ];
 
 		this.dispatchEvent( { type: 'transitionStart' } );
 
 		$current.style.transition = 'none';
 		$current.style.transform = 'none';
-		$current.style.opacity = 0;
-		$current.style.zIndex = 1;
+		$current.style.opacity = '0';
+		$current.style.zIndex = '1';
 
 		$currentEffects.style.transition = `none`;
 		$currentEffects.style.transform = 'none';
 
-		requestAnimationFrame( () => {
+		requestAnimationFrame( (): void => {
 
 			$current.style.transition = `opacity ${ this.duration * 0.2 }ms`;
-			$current.style.opacity = 1;
+			$current.style.opacity = '1';
 
 			$currentEffects.style.transition = `transform ${ this.duration }ms linear`;
 			$currentEffects.style.transform =
@@ -184,7 +198,7 @@ export default class DOMSlideshow {
 				$current.classList.contains( '-rtol'    ) ? `translateX( -70px )` :
 				'none';
 
-			this._timeoutId = setTimeout( () => {
+			this._timeoutId = window.setTimeout( () => {
 
 				if ( ! this._running ) return;
 
@@ -205,25 +219,20 @@ export default class DOMSlideshow {
 
 	}
 
-	addEventListener( type, listener ) {
+	public addEventListener( type: string, listener: Listener ): void {
 
 		const listeners = this._listeners;
 
-		if ( listeners[ type ] === undefined ) {
-
-			listeners[ type ] = [];
-
-		}
+		if ( listeners[ type ] === undefined ) listeners[ type ] = [];
 
 		if ( listeners[ type ].indexOf( listener ) === - 1 ) {
 
 			listeners[ type ].push( listener );
 
 		}
-
 	}
 
-	removeEventListener( type, listener ) {
+	public removeEventListener( type: string, listener: Listener ): void {
 
 		const listeners = this._listeners;
 		const listenerArray = listeners[ type ];
@@ -232,17 +241,12 @@ export default class DOMSlideshow {
 
 			const index = listenerArray.indexOf( listener );
 
-			if ( index !== - 1 ) {
-
-				listenerArray.splice( index, 1 );
-
-			}
+			if ( index !== - 1 ) listenerArray.splice( index, 1 );
 
 		}
-
 	}
 
-	dispatchEvent( event ) {
+	public dispatchEvent(event: DispatcherEvent): void {
 
 		const listeners = this._listeners;
 		const listenerArray = listeners[ event.type ];
@@ -250,7 +254,6 @@ export default class DOMSlideshow {
 		if ( listenerArray !== undefined ) {
 
 			event.target = this;
-
 			const array = listenerArray.slice( 0 );
 
 			for ( let i = 0, l = array.length; i < l; i ++ ) {
@@ -258,16 +261,14 @@ export default class DOMSlideshow {
 				array[ i ].call( this, event );
 
 			}
-
 		}
-
 	}
 
 }
 
 Array.prototype.forEach.call(
 	document.querySelectorAll( '.DOMSlideshow[data-dom-slideshow-autostart]' ),
-	( $el ) => {
+	( $el: HTMLElement ): void => {
 
 		new DOMSlideshow( $el );
 
