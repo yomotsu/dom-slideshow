@@ -18,11 +18,11 @@ export default class DOMSlideshow {
     duration: number;
     noLoop: boolean;
     constructor($el: HTMLElement, options?: DOMSlideshowOptions);
-    readonly currentIndex: number;
-    readonly itemLength: number;
-    readonly prevIndex: number;
-    readonly nextIndex: number;
-    readonly isLast: boolean;
+    get currentIndex(): number;
+    get itemLength(): number;
+    get prevIndex(): number;
+    get nextIndex(): number;
+    get isLast(): boolean;
     toNext(): void;
     play(): void;
     pause(): void;
