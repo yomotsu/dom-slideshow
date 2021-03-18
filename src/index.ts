@@ -11,7 +11,7 @@ interface DispatcherEvent {
 type Listener = ( event?: DispatcherEvent ) => void;
 
 const $style = document.createElement( 'style' );
-$style.innerHTML = `
+$style.innerHTML = /* css */`
 .DOMSlideshow {
 	overflow: hidden;
 	position: relative;
@@ -51,13 +51,20 @@ $style.innerHTML = `
 	background-size: cover;
 	backface-visibility: hidden;
 }
-.-zoomin  .DOMSlideshow__ItemEffect,
-.-zoomout .DOMSlideshow__ItemEffect,
-.-ltor    .DOMSlideshow__ItemEffect,
-.-rtol    .DOMSlideshow__ItemEffect {
-	width: calc( 100% + 200px );
-	height: calc( 100% + 200px );
-	margin: -100px;
+.-ltor .DOMSlideshow__ItemEffect {
+	transform: translateX( 70px );
+	width: calc( 100% + 70px );
+	margin-left: -70px;
+}
+.-rtol .DOMSlideshow__ItemEffect {
+	transform: translateX( -70px );
+	width: calc( 100% + 70px );
+}
+.-zoomin .DOMSlideshow__ItemEffect {
+	transform: scale( 1.1, 1.1 );
+}
+.-zoomout .DOMSlideshow__ItemEffect {
+	transform: scale( 1.1, 1.1 );
 }
 `;
 document.head.appendChild( $style );
@@ -73,8 +80,8 @@ export default class DOMSlideshow {
 	private _$items!: NodeListOf<HTMLElement>;
 	private _$effects!: NodeListOf<HTMLElement>;
 
-	public duration!: number;
-	public noLoop!: boolean;
+	public duration: number = 5000;
+	public noLoop: boolean = false;
 
 	constructor( $el: HTMLElement, options: DOMSlideshowOptions = {} ) {
 
@@ -85,8 +92,8 @@ export default class DOMSlideshow {
 		this._$el = $el;
 		this._$items = this._$el.querySelectorAll( '.DOMSlideshow__Item' );
 		this._$effects = this._$el.querySelectorAll( '.DOMSlideshow__ItemEffect' );
-		this.duration = options.duration || 5000;
-		this.noLoop = !! options.noLoop;
+		this.duration = options.duration || this.duration;
+		this.noLoop = options.noLoop || this.noLoop;
 
 		this._transition();
 
@@ -131,7 +138,6 @@ export default class DOMSlideshow {
 		$current.style.zIndex = '0';
 
 		$prev.style.transition = 'none';
-		$prev.style.transform = 'none';
 		$prev.style.opacity = '0';
 
 		$prevEffects.style.transition = 'none';
@@ -160,30 +166,17 @@ export default class DOMSlideshow {
 
 		clearTimeout( this._timeoutId );
 
-		const elRect = this._$el.getBoundingClientRect();
-		const viewWidth  = elRect.width;
-		const viewHeight = elRect.height;
-		const scaleMin = Math.max(
-			1 + ( ( viewHeight + 50 ) / viewHeight - 1 ),
-			1 + ( ( viewWidth  + 50 ) / viewWidth  - 1 )
-		);
-		const scaleMax = Math.max(
-			1 + ( viewHeight / ( viewHeight + 200 ) - 1 ),
-			1 + ( viewWidth  / ( viewWidth  + 200 ) - 1 )
-		);
-
 		const $current = this._$items[ this._currentIndex ];
 		const $currentEffects = this._$effects[ this._currentIndex ];
 
 		this.dispatchEvent( { type: 'transitionStart' } );
 
 		$current.style.transition = 'none';
-		$current.style.transform = 'none';
 		$current.style.opacity = '0';
 		$current.style.zIndex = '1';
 
 		$currentEffects.style.transition = `none`;
-		$currentEffects.style.transform = 'none';
+		$currentEffects.style.transform = $current.classList.contains( '-zoomout' ) ? '' : 'none';
 
 		requestAnimationFrame( (): void => {
 
@@ -191,12 +184,7 @@ export default class DOMSlideshow {
 			$current.style.opacity = '1';
 
 			$currentEffects.style.transition = `transform ${ this.duration }ms linear`;
-			$currentEffects.style.transform =
-				$current.classList.contains( '-zoomin'  ) ? `scale( ${ scaleMin }, ${ scaleMin } )` :
-				$current.classList.contains( '-zoomout' ) ? `scale( ${ scaleMax }, ${ scaleMax } )` :
-				$current.classList.contains( '-ltor'    ) ? `translateX( 70px )` :
-				$current.classList.contains( '-rtol'    ) ? `translateX( -70px )` :
-				'none';
+			$currentEffects.style.transform = $current.classList.contains( '-zoomout' ) ? 'none' : '';
 
 			this._timeoutId = window.setTimeout( () => {
 
