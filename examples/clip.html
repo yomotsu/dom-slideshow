@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>=^.^=</title>
+<style>
+.DOMSlideshow__ItemContent {
+	color: #fff;
+	font-size: 20px;
+	font-weight: bold;
+}
+</style>
+</head>
+<body>
+<div><a href="https://github.com/yomotsu/dom-slideshow">GitHub repo</a></div>
+
+
+<div style="height: 500px">
+	<div class="DOMSlideshow">
+		<ul class="DOMSlideshow__Inner">
+
+			<li class="DOMSlideshow__Item -zoomin">
+				<div class="DOMSlideshow__ItemContent">content 1</div>
+				<div class="DOMSlideshow__ItemEffect" style="background-image: url( img/1.jpg );"></div>
+			</li>
+
+			<li class="DOMSlideshow__Item -rtol">
+				<div class="DOMSlideshow__ItemContent">CONTENT 2</div>
+				<div class="DOMSlideshow__ItemEffect" style="background-image: url( img/2.jpg );"></div>
+			</li>
+
+			<li class="DOMSlideshow__Item -zoomout">
+				<div class="DOMSlideshow__ItemContent">content 3</div>
+				<div class="DOMSlideshow__ItemEffect" style="background-image: url( img/3.jpg );"></div>
+			</li>
+
+			<li class="DOMSlideshow__Item -ltor">
+				<div class="DOMSlideshow__ItemContent">CONTENT 4</div>
+				<div class="DOMSlideshow__ItemEffect" style="background-image: url( img/4.jpg );"></div>
+			</li>
+
+		</ul>
+	</div>
+</div>
+
+<script src="../dist/dom-slideshow.js"></script>
+<script>
+const slideshow = new DOMSlideshow( document.querySelector( '.DOMSlideshow' ), { transitionType: 1 } );
+slideshow.addEventListener( 'transitionStart', function() {
+
+console.log( 'start', slideshow.current );
+
+} );
+
+slideshow.addEventListener( 'transitionEnd', function() {
+
+console.log( 'end', slideshow.current );
+
+} );
+</script>
+</body>
+</html>

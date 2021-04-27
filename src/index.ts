@@ -90,7 +90,7 @@ export default class DOMSlideshow {
 	private _$items!: NodeListOf<HTMLElement>;
 	private _$effects!: NodeListOf<HTMLElement>;
 
-	public duration: number = 5000 / 3;
+	public duration: number = 5000;
 	public noLoop: boolean = false;
 
 	constructor( $el: HTMLElement, options: DOMSlideshowOptions = {} ) {
@@ -152,11 +152,7 @@ export default class DOMSlideshow {
 
 	}
 
-	// public to( index ): void {
-
-	// }
-
-	public toNext(): void {
+	public to( index: number ): void {
 
 		const $current = this._$items[ this._currentIndex ];
 		const $prev = this._$items[ this.prevIndex ];
@@ -179,8 +175,24 @@ export default class DOMSlideshow {
 		$prevEffects.style.transition = 'none';
 		$prevEffects.style.transform = $prev.classList.contains( '-zoomout' ) ? '' : 'none';
 
-		this._currentIndex = this.nextIndex;
+		this._currentIndex = index;
+		Array.prototype.forEach.call(
+			this._$items,
+			( $item, i ) => {
+
+				$item.classList.remove( '-current' );
+
+				if ( i === this._currentIndex ) $item.classList.add( '-current' );
+
+			}
+		);
 		this._transition();
+
+	}
+
+	public toNext(): void {
+
+		this.to( this.nextIndex );
 
 	}
 
@@ -223,43 +235,46 @@ export default class DOMSlideshow {
 		$current.style.zIndex = '1';
 
 		$currentEffects.style.transition = `none`;
-		console.log($current.classList);
-		
 		$currentEffects.style.transform = $current.classList.contains( '-zoomout' ) ? '' : 'none';
 
+		// wait for 2 frames just in case
 		requestAnimationFrame( (): void => {
 
-			if ( this._transitionType === TRANSITION_TYPE.CROSS_FADE ) {
+			requestAnimationFrame( (): void => {
 
-				$current.style.transition = `opacity ${ this.duration * 0.2 }ms`;
-				$current.style.opacity = '1';
+				if ( this._transitionType === TRANSITION_TYPE.CROSS_FADE ) {
 
-			} else if ( this._transitionType === TRANSITION_TYPE.CLIP ) {
+					$current.style.transition = `opacity ${ this.duration * 0.2 }ms`;
+					$current.style.opacity = '1';
 
-				$current.style.transition = `clip ${ this.duration * 0.2 }ms`;
-				$current.style.clip = `rect( 0, ${ this._width }px, ${ this._height }px, 0 )`;
+				} else if ( this._transitionType === TRANSITION_TYPE.CLIP ) {
 
-			}
-
-			$currentEffects.style.transition = `transform ${ this.duration }ms linear`;
-			$currentEffects.style.transform = $current.classList.contains( '-zoomout' ) ? 'none' : '';
-
-			this._timeoutId = window.setTimeout( () => {
-
-				if ( ! this._running ) return;
-
-				this.dispatchEvent( { type: 'transitionEnd' } );
-
-				if ( this.noLoop && this.isLast ) {
-
-					this.dispatchEvent( { type: 'ended' } );
-					return;
+					$current.style.transition = `clip ${ this.duration * 0.2 }ms`;
+					$current.style.clip = `rect( 0, ${ this._width }px, ${ this._height }px, 0 )`;
 
 				}
 
-				this.toNext();
+				$currentEffects.style.transition = `transform ${ this.duration * 1.2 }ms linear`;
+				$currentEffects.style.transform = $current.classList.contains( '-zoomout' ) ? 'none' : '';
 
-			}, this.duration );
+				this._timeoutId = window.setTimeout( () => {
+
+					if ( ! this._running ) return;
+
+					this.dispatchEvent( { type: 'transitionEnd' } );
+
+					if ( this.noLoop && this.isLast ) {
+
+						this.dispatchEvent( { type: 'ended' } );
+						return;
+
+					}
+
+					this.toNext();
+
+				}, this.duration );
+
+			} );
 
 		} );
 
