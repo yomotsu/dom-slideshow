@@ -1,6 +1,14 @@
+
+const TRANSITION_TYPE = {
+	CROSS_FADE: 0,
+	CLIP: 1,
+} as const;
+type TRANSITION_TYPE = typeof TRANSITION_TYPE[keyof typeof TRANSITION_TYPE];
+
 export interface DOMSlideshowOptions {
-	duration?: number,
-	noLoop?: boolean,
+	duration?: number;
+	noLoop?: boolean;
+	transitionType?: TRANSITION_TYPE;
 }
 
 interface DispatcherEvent {
@@ -68,19 +76,21 @@ $style.innerHTML = /* css */`
 }
 `;
 document.head.appendChild( $style );
-
 export default class DOMSlideshow {
 
-	private _currentIndex: number = 0; 
+	private _currentIndex: number = 0;
 	private _running: boolean = true;
 	private _timeoutId: number = 0;
 	private _listeners: { [ type: string ]: Listener[] } = {};
+	private _width?: number;
+	private _height?: number;
+	private _transitionType?: TRANSITION_TYPE = TRANSITION_TYPE.CROSS_FADE;
 
 	private _$el!: HTMLElement;
 	private _$items!: NodeListOf<HTMLElement>;
 	private _$effects!: NodeListOf<HTMLElement>;
 
-	public duration: number = 5000;
+	public duration: number = 5000 / 3;
 	public noLoop: boolean = false;
 
 	constructor( $el: HTMLElement, options: DOMSlideshowOptions = {} ) {
@@ -92,10 +102,23 @@ export default class DOMSlideshow {
 		this._$el = $el;
 		this._$items = this._$el.querySelectorAll( '.DOMSlideshow__Item' );
 		this._$effects = this._$el.querySelectorAll( '.DOMSlideshow__ItemEffect' );
+		this._transitionType = options.transitionType || this._transitionType;
+
 		this.duration = options.duration || this.duration;
 		this.noLoop = options.noLoop || this.noLoop;
 
 		this._transition();
+
+		const updateSize = () => {
+
+			const elRect = $el.getBoundingClientRect();
+			this._width = elRect.width;
+			this._height = elRect.height;
+
+		}
+
+		updateSize();
+		window.addEventListener( 'resize', updateSize );
 
 	}
 
@@ -129,6 +152,10 @@ export default class DOMSlideshow {
 
 	}
 
+	// public to( index ): void {
+
+	// }
+
 	public toNext(): void {
 
 		const $current = this._$items[ this._currentIndex ];
@@ -138,10 +165,19 @@ export default class DOMSlideshow {
 		$current.style.zIndex = '0';
 
 		$prev.style.transition = 'none';
-		$prev.style.opacity = '0';
+
+		if ( this._transitionType === TRANSITION_TYPE.CROSS_FADE ) {
+
+			$prev.style.opacity = '0';
+
+		} else if ( this._transitionType === TRANSITION_TYPE.CLIP ) {
+
+			$prev.style.clip = `rect( 0, ${ this._width }px, ${ this._height }px, ${ this._width }px )`;
+
+		}
 
 		$prevEffects.style.transition = 'none';
-		$prevEffects.style.transform = 'none';
+		$prevEffects.style.transform = $prev.classList.contains( '-zoomout' ) ? '' : 'none';
 
 		this._currentIndex = this.nextIndex;
 		this._transition();
@@ -172,16 +208,38 @@ export default class DOMSlideshow {
 		this.dispatchEvent( { type: 'transitionStart' } );
 
 		$current.style.transition = 'none';
-		$current.style.opacity = '0';
+
+		if ( this._transitionType === TRANSITION_TYPE.CROSS_FADE ) {
+
+			$current.style.opacity = '0';
+
+		} else if ( this._transitionType === TRANSITION_TYPE.CLIP ) {
+
+			$current.style.opacity = '1';
+			$current.style.clip = `rect( 0, ${ this._width }px, ${ this._height }px, ${ this._width }px )`;
+
+		}
+
 		$current.style.zIndex = '1';
 
 		$currentEffects.style.transition = `none`;
+		console.log($current.classList);
+		
 		$currentEffects.style.transform = $current.classList.contains( '-zoomout' ) ? '' : 'none';
 
 		requestAnimationFrame( (): void => {
 
-			$current.style.transition = `opacity ${ this.duration * 0.2 }ms`;
-			$current.style.opacity = '1';
+			if ( this._transitionType === TRANSITION_TYPE.CROSS_FADE ) {
+
+				$current.style.transition = `opacity ${ this.duration * 0.2 }ms`;
+				$current.style.opacity = '1';
+
+			} else if ( this._transitionType === TRANSITION_TYPE.CLIP ) {
+
+				$current.style.transition = `clip ${ this.duration * 0.2 }ms`;
+				$current.style.clip = `rect( 0, ${ this._width }px, ${ this._height }px, 0 )`;
+
+			}
 
 			$currentEffects.style.transition = `transform ${ this.duration }ms linear`;
 			$currentEffects.style.transform = $current.classList.contains( '-zoomout' ) ? 'none' : '';
