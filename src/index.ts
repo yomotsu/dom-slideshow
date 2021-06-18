@@ -79,12 +79,15 @@ document.head.appendChild( $style );
 export default class DOMSlideshow {
 
 	private _currentIndex: number = 0;
-	private _running: boolean = true;
-	private _timeoutId: number = 0;
-	private _listeners: { [ type: string ]: Listener[] } = {};
+	private _lastCurrentIndex!: number;
 	private _width?: number;
 	private _height?: number;
 	private _transitionType?: TRANSITION_TYPE = TRANSITION_TYPE.CROSS_FADE;
+	private _running: boolean = true;
+	private _isTransitioning: boolean = false;
+	private _initialTransition: boolean = true;
+	private _timeoutId: number = 0;
+	private _listeners: { [ type: string ]: Listener[] } = {};
 
 	private _$el!: HTMLElement;
 	private _$items!: NodeListOf<HTMLElement>;
@@ -103,6 +106,7 @@ export default class DOMSlideshow {
 		this._$items = this._$el.querySelectorAll( '.DOMSlideshow__Item' );
 		this._$effects = this._$el.querySelectorAll( '.DOMSlideshow__ItemEffect' );
 		this._transitionType = options.transitionType || this._transitionType;
+		this._lastCurrentIndex = this.prevIndex;
 
 		this.duration = options.duration || this.duration;
 		this.noLoop = options.noLoop || this.noLoop;
@@ -152,11 +156,19 @@ export default class DOMSlideshow {
 
 	}
 
+	get isTransitioning(): boolean {
+
+		return this._isTransitioning;
+
+	}
+
 	public to( index: number ): void {
 
+		if ( index === this._currentIndex ) return;
+
 		const $current = this._$items[ this._currentIndex ];
-		const $prev = this._$items[ this.prevIndex ];
-		const $prevEffects = this._$effects[ this.prevIndex ];
+		const $prev = this._$items[ this._lastCurrentIndex ];
+		const $prevEffects = this._$effects[ this._lastCurrentIndex ];
 
 		$current.style.zIndex = '0';
 
@@ -175,6 +187,7 @@ export default class DOMSlideshow {
 		$prevEffects.style.transition = 'none';
 		$prevEffects.style.transform = $prev.classList.contains( '-zoomout' ) ? '' : 'none';
 
+		this._lastCurrentIndex = this._currentIndex;
 		this._currentIndex = index;
 		Array.prototype.forEach.call(
 			this._$items,
@@ -220,25 +233,31 @@ export default class DOMSlideshow {
 		this.dispatchEvent( { type: 'transitionStart' } );
 
 		$current.style.transition = 'none';
-
-		if ( this._transitionType === TRANSITION_TYPE.CROSS_FADE ) {
-
-			$current.style.opacity = '0';
-
-		} else if ( this._transitionType === TRANSITION_TYPE.CLIP ) {
-
-			$current.style.opacity = '1';
-			$current.style.clip = `rect( 0, ${ this._width }px, ${ this._height }px, ${ this._width }px )`;
-
-		}
-
-		$current.style.zIndex = '1';
-
 		$currentEffects.style.transition = `none`;
-		$currentEffects.style.transform = $current.classList.contains( '-zoomout' ) ? '' : 'none';
 
-		// wait for 2 frames just in case
 		requestAnimationFrame( (): void => {
+
+			if ( this._initialTransition ) {
+
+				this._initialTransition = false;
+
+			} else {
+
+				if ( this._transitionType === TRANSITION_TYPE.CROSS_FADE ) {
+
+					$current.style.opacity = '0';
+
+				} else if ( this._transitionType === TRANSITION_TYPE.CLIP ) {
+
+					$current.style.opacity = '1';
+					$current.style.clip = `rect( 0, ${ this._width }px, ${ this._height }px, ${ this._width }px )`;
+
+				}
+
+			}
+
+			$current.style.zIndex = '1';
+			$currentEffects.style.transform = $current.classList.contains( '-zoomout' ) ? '' : 'none';
 
 			requestAnimationFrame( (): void => {
 
@@ -253,6 +272,15 @@ export default class DOMSlideshow {
 					$current.style.clip = `rect( 0, ${ this._width }px, ${ this._height }px, 0 )`;
 
 				}
+
+				this._isTransitioning = true;
+
+				window.setTimeout( () => {
+
+					this._isTransitioning = false;
+					$current.style.clip = '';
+
+				}, this.duration * 0.2 );
 
 				$currentEffects.style.transition = `transform ${ this.duration * 1.2 }ms linear`;
 				$currentEffects.style.transform = $current.classList.contains( '-zoomout' ) ? 'none' : '';
